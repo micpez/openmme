@@ -96,6 +96,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
         char *buffer;
         log_msg(LOG_INFO, "NAS PDU msg: %s\n", msg_to_hex_str(msg, nas_msg_len, &buffer));
         free(buffer);
+        log_msg(LOG_INFO, "NAS PDU proc code: %u\n", proc_code);
 
 	unsigned char offset = 0;
 
@@ -233,7 +234,9 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		break;
 
 	case NAS_ATTACH_REQUEST:{
-		short offset = 0;
+                msg += offset;
+                offset = 0;
+		//short offset = 0;
 		nas->elements_len = 6;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 6);
 		//if(NULL == nas.elements)...
@@ -255,7 +258,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
                 char *buffer=NULL;
 		log_msg(LOG_INFO, "IMSI=%s\n", msg_to_hex_str(nas->elements[0].IMSI, BINARY_IMSI_LEN, &buffer));
                 free(buffer);
-
+                
 
 		/*UE network capacity*/
 		nas->elements[1].ue_network.len = msg[offset];
