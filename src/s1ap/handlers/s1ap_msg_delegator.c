@@ -31,6 +31,30 @@
 #include "s1ap_msg_codes.h"
 #include "s1ap_ie.h"
 
+char *msg_to_hex_str(const char *msg, int len, char **buffer) {
+
+  char chars[]= "0123456789abcdef";
+  char *local;
+
+  if (!len)
+      return NULL;
+
+  if (!(local = (char *)malloc(2 * len + 1)))
+      return NULL;
+
+  for (int i = 0; i < len; i++) {
+      local[2 * i] = chars[(msg[i] >> 4) & 0x0F];
+      local[2 * i + 1] = chars[(msg[i]) & 0x0F];
+  }
+
+  local[2 * len] = '\0';
+
+  buffer = &local;
+  return local;
+
+}
+
+
 static void
 parse_erab_pdu(char *msg,  int nas_msg_len, struct eRAB_elements *erab)
 {
@@ -68,6 +92,11 @@ void
 parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		unsigned short proc_code)
 {
+
+        char *buffer;
+        log_msg(LOG_INFO, "NAS PDU msg: %s\n", msg_to_hex_str(msg, nas_msg_len, &buffer));
+        free(buffer);
+
 	unsigned char offset = 0;
 
 #if 0
@@ -213,14 +242,20 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		//memcpy(&(nas->elements[0].IMSI), msg+6, BINARY_IMSI_LEN);
 		/*TODO: This encoding/decoding has issue with sprirent and ng40. IMSI
 		 * is packed differently.*/
-		/*Code working with ng40
+		/*Code working with ng40 */
 		memcpy(&(nas->elements[0].IMSI), msg+6, BINARY_IMSI_LEN);
 		offset = 6 + BINARY_IMSI_LEN ;
-		*/
 
 		/*Code working with sprirent and Polaris*/
+                /*
 		memcpy(&(nas->elements[0].IMSI), msg+5, BINARY_IMSI_LEN);
 		offset = 5 + BINARY_IMSI_LEN ;
+                */
+
+                char *buffer=NULL;
+		log_msg(LOG_INFO, "IMSI=%s\n", msg_to_hex_str(nas->elements[0].IMSI, BINARY_IMSI_LEN, &buffer));
+                free(buffer);
+
 
 		/*UE network capacity*/
 		nas->elements[1].ue_network.len = msg[offset];
@@ -313,16 +348,40 @@ parse_IEs(char *msg, struct proto_IE *proto_ies, unsigned short proc_code)
 		union proto_IE_data *ie = &(proto_ies->data[i]);
 		unsigned short IE_type, IE_data_len = 0;
 
+                char *buffer;
+                log_msg(LOG_INFO, "IE msg: %s\n", msg_to_hex_str(msg, 20, &buffer));
+                free(buffer);
+
 		memcpy(&IE_type, msg, sizeof(short int));
 		IE_type = ntohs(IE_type);
 		ie->IE_type = IE_type;
 		msg +=2;//next to ie type
 		msg +=1;//next to criticality
-		memcpy(&IE_data_len, msg, sizeof(char));
+
+                /*parse length according to PER rules*/
+                unsigned char val = (msg[0] & 0xc0) >> 6;
+                if(val == 2)
+                {
+                    log_msg(LOG_INFO, "length more than 128\n");
+                    unsigned short higher = (unsigned char)msg[0] & 0x3f;
+                    msg += 1;
+                    unsigned short lower = (unsigned char)msg[0];
+                    unsigned short ie_len = (higher << 8) | lower;
+                    IE_data_len = ie_len;
+                }
+                else
+                {
+                    log_msg(LOG_INFO, "length less than 128\n");
+                    memcpy(&IE_data_len, msg, sizeof(char));
+                }
+
 		msg+=1;//next to len
 		//IE_data_len = (IE_data_len);
-		log_msg(LOG_INFO, "IE type = %d\n", IE_type);
-		log_msg(LOG_INFO, "IE data len= %ud\n", IE_data_len);
+                log_msg(LOG_INFO, "IE type = %d\n", IE_type);
+                log_msg(LOG_INFO, "IE data len= %x - %u\n", IE_data_len, IE_data_len);
+
+                log_msg(LOG_INFO, "IE msg: %s\n", msg_to_hex_str(msg, IE_data_len, &buffer));
+                free(buffer);
 
 		/*Based on IE_Type call the parser to read IE info*/
 		/*TODO: optimize with function ptr etc.*/
@@ -334,6 +393,7 @@ parse_IEs(char *msg, struct proto_IE *proto_ies, unsigned short proc_code)
 
 		case S1AP_IE_ENB_NAME:
 			log_msg(LOG_INFO, "parse global eNB name\n");
+                        ie_parse_enb_name(msg, IE_data_len);
 			break;
 
 		case S1AP_IE_SUPPORTED_TAS:
@@ -412,7 +472,7 @@ init_ue_msg_handler(char *msg, int enb_fd)
 
 	/*****Message structure***
 	*/
-	log_msg(LOG_INFO, "--------------------- %d --------------", msg[3]);
+	log_msg(LOG_INFO, "--------------------- %d --------------\n", msg[3]);
 	if (msg[3] == 0x80)
 		parse_IEs(msg+3, &proto_ies, S1AP_INITIAL_UE_MSG_CODE);
 	else
