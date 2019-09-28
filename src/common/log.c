@@ -24,7 +24,7 @@
 
 #include "log.h"
 bool g_nolog = false;
-enum log_levels g_log_level = LOG_WARNING;
+enum log_levels g_log_level = LOG_INFO;
 
 static const char *log_level_name[] = { "INFO", "DEBUG", "WARN", "ERROR" };
 

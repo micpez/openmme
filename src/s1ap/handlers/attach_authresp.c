@@ -44,6 +44,7 @@ s1_auth_resp_handler(struct proto_IE *s1_auth_resp_ies)
 
 	/*****Message structure***
 	*/
+	log_msg(LOG_INFO, "--------------------- --------------\n");
 	log_msg(LOG_INFO, "Parse s1ap auth resp message:--\n");
 
 	/*Validate all eNB info*/

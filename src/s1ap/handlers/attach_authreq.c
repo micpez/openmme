@@ -87,7 +87,7 @@ read_next_msg()
 					log_msg(LOG_ERROR, "Error reading auth req Q\n");
 					/* TODO : Add proper error handling */
 				}
-		log_msg(LOG_INFO, "Auth req recvd from mme on Q len-%d", bytes_read);
+		log_msg(LOG_INFO, "Auth req recvd from mme on Q len-%d\n", bytes_read);
 	}
 
 	return bytes_read;

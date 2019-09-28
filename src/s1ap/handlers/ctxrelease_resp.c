@@ -43,7 +43,14 @@ s1_ctx_release_resp_handler(char *msg)
 
 	log_msg(LOG_INFO, "Parse s1ap context release complete message:--\n");
 
-	parse_IEs(msg+2, &s1_ctx_release_ies, S1AP_UE_CTX_RELEASE_CODE);
+        unsigned short msg_len = 0;
+        msg_len = get_length(&msg);
+
+        char *buffer;
+        log_msg(LOG_INFO, "s1_ctx_release_resp msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+        free(buffer);
+
+	parse_IEs(msg, &s1_ctx_release_ies, S1AP_UE_CTX_RELEASE_CODE);
 
 	/*TODO: Validate all eNB info*/
 
