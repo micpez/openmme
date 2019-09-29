@@ -188,7 +188,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 			log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str((char *)nas_header_sec.mac, MAC_SIZE, &buffer));
                         free(buffer);
 
-			log_msg(LOG_INFO, "seq no=%s\n", nas_header_sec.seq_no);
+			log_msg(LOG_INFO, "seq no=%x\n", nas_header_sec.seq_no);
                         msg += 6;
 
 		        sec_header_type = msg[0] >> 4;
@@ -252,6 +252,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		break;
 
 	case NAS_AUTH_RESP:
+		log_msg(LOG_INFO, "NAS_AUTH_RESP recvd\n");
 		nas->elements_len = 1;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 5);
 		//if(NULL == nas.elements)...
@@ -260,6 +261,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		break;
 
 	case NAS_ATTACH_REQUEST:{
+		log_msg(LOG_INFO, "NAS_ATTACH_REQUEST recvd\n");
                 //msg += offset;
 		//short offset = 0;
 		unsigned char tmp = msg[0];
@@ -471,6 +473,7 @@ parse_IEs(char *msg, struct proto_IE *proto_ies, unsigned short proc_code)
 			}
 
 		case S1AP_ERAB_SETUP_CTX_SUR:
+			log_msg(LOG_INFO, "parse S1AP_ERAB_SETUP_CTX_SUR parse_erab_pdu - %d\n", ie->rrc_est_cause);
 			parse_erab_pdu(msg, IE_data_len, &ie->erab);
 			break;
 
