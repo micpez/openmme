@@ -1,8 +1,8 @@
 {
 	"mme": {
 		"egtp_default_port": 2123,
-		"ip_addr": "10.0.10.20",
-		"s1ap_addr": "10.0.10.20",
+		"ip_addr": "10.0.10.30",
+		"s1ap_addr": "10.0.10.30",
 		"egtp_addr": "10.1.10.22",
 		"sctp_port": 36412,
 		"name": "vmmestandalone",
@@ -18,6 +18,10 @@
 			"dig2": 1,
 			"dig3": -1
 		}
+	},
+	"enb": {
+		"enb_addr": "10.0.10.1",
+		"enb_port": "32767"
 	},
 	"s11": {
 		"sgw_addr": "10.1.10.20",

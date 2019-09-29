@@ -107,13 +107,13 @@ unsigned short get_length(char **msg) {
 
     unsigned char val = ((*msg)[0] & 0xc0) >> 6;
     if(val == 2) {
-        log_msg(LOG_INFO, "length more than 128\n");
+        //log_msg(LOG_INFO, "length more than 128\n");
         unsigned short higher = (unsigned char)(*msg)[0] & 0x3f;
         (*msg)++;
         unsigned short lower = (unsigned char)(*msg)[0];
         ie_len = (higher << 8) | lower;
     } else {
-        log_msg(LOG_INFO, "length less than 128\n");
+        //log_msg(LOG_INFO, "length less than 128\n");
         ie_len = (unsigned short)(*msg)[0];
     }
     (*msg)++;

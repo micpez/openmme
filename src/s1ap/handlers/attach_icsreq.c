@@ -80,7 +80,7 @@ read_next_msg()
 					log_msg(LOG_ERROR, "Error in reading \n");
 					/* TODO : Add proper error handling */
 				}
-		log_msg(LOG_INFO, "Init Ctx Setup Message Received, len: %d", bytes_read);
+		log_msg(LOG_INFO, "Init Ctx Setup Message Received, len: %d\n", bytes_read);
 	}
 
 	return bytes_read;

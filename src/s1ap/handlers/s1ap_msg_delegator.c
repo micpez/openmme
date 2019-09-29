@@ -144,45 +144,87 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 	} else if (S1AP_INITIAL_UE_MSG_CODE == proc_code ) {
 #endif
 
-typedef struct nas_pdu_header1 {
+     typedef struct nas_pdu_header_sec {
         unsigned char security_header_type:4;
         unsigned char proto_discriminator:4;
         unsigned char mac[MAC_SIZE];
         unsigned char seq_no;
-        unsigned char security_header_type1:4;
-        unsigned char proto_discriminator1:4;
+     } nas_pdu_header_sec;
+
+     typedef struct nas_pdu_header_short {
+        unsigned char security_header_type:4;
+        unsigned char proto_discriminator:4;
         unsigned char message_type;
         unsigned char nas_security_param;
-} nas_pdu_header1;
+     } nas_pdu_header_short;
+
+     typedef struct nas_pdu_header_long {
+        unsigned char security_header_type:4;
+        unsigned char proto_discriminator:4;
+        unsigned char procedure_trans_identity;
+        unsigned char message_type;
+        unsigned char nas_security_param;
+     } nas_pdu_header_long;
 
 
-		unsigned char header_type;
-		unsigned char sec_type;
+                nas_pdu_header_sec nas_header_sec;
+                nas_pdu_header_short nas_header_short;
+                nas_pdu_header_long nas_header_long;
+
+		unsigned char sec_header_type;
 		unsigned char protocol_discr;
-		memcpy(&header_type, msg, 1);
-		sec_type = header_type >> 4;
-		protocol_discr = header_type & 0x0F;
-		if(0 == sec_type) { /*not security header*/
-			log_msg(LOG_INFO, "No security header\n");
-			memcpy(&(nas->header), msg, sizeof(nas_pdu_header));/*copy only till msg type*/
-                        msg += 3;
-		} else {
+
+		sec_header_type = msg[0] >> 4;
+		protocol_discr = msg[0] & 0x0F;
+		unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
+		log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
+		log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
+		log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
+
+		if(0 != sec_header_type) { /*security header*/
 			log_msg(LOG_INFO, "Security header\n");
-			/*now for esm resp, there is procedure tx identity, why the hell it was not there before.*/
-			/*one more donkey logic, do something!!*/
 
-                        nas_pdu_header1 nas_header1;
-			memcpy(&(nas_header1), msg, sizeof(nas_pdu_header1));
+			memcpy(&nas_header_sec, msg, sizeof(nas_pdu_header_sec));
+
                         char *buffer;
-			log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str(nas_header1.mac, MAC_SIZE, &buffer));
+			log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str((char *)nas_header_sec.mac, MAC_SIZE, &buffer));
                         free(buffer);
-			log_msg(LOG_INFO, "seq no=%s\n", nas_header1.seq_no);
-                        msg += 9;
 
-			nas->header.security_header_type = nas_header1.security_header_type1;
-			nas->header.proto_discriminator = nas_header1.proto_discriminator1;
-			nas->header.message_type = nas_header1.message_type;
-		}
+			log_msg(LOG_INFO, "seq no=%s\n", nas_header_sec.seq_no);
+                        msg += 6;
+
+		        sec_header_type = msg[0] >> 4;
+		        protocol_discr = msg[0] & 0x0F;
+		        unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
+		log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
+		log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
+		log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
+			if (is_ESM) {
+				log_msg(LOG_INFO, "NAS PDU is ESM\n");
+				memcpy(&nas_header_long, msg, sizeof(nas_header_long)); /*copy only till msg type*/
+				msg += 4;
+
+				nas->header.security_header_type = nas_header_long.security_header_type;
+				nas->header.proto_discriminator = nas_header_long.proto_discriminator;
+				nas->header.procedure_trans_identity = nas_header_long.procedure_trans_identity;
+				nas->header.message_type = nas_header_long.message_type;
+				nas->header.nas_security_param = nas_header_long.nas_security_param;
+			} else {
+				log_msg(LOG_INFO, "NAS PDU is EMM\n");
+				memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
+				msg += 3;
+
+				nas->header.security_header_type = nas_header_short.security_header_type;
+				nas->header.proto_discriminator = nas_header_short.proto_discriminator;
+				nas->header.message_type = nas_header_short.message_type;
+				nas->header.nas_security_param = nas_header_short.nas_security_param;
+			}
+                } else {
+			log_msg(LOG_INFO, "No security header\n");
+			memcpy(&(nas->header), msg, sizeof(nas_pdu_header)); /*copy only till msg type*/
+                        msg += 3;
+                }
+
 
 	log_msg(LOG_INFO, "Nas msg type: %X\n", nas->header.message_type);
 
@@ -191,15 +233,16 @@ typedef struct nas_pdu_header1 {
 		unsigned char element_id;
 
 		log_msg(LOG_INFO, "ESM response recvd\n");
-		memcpy(&element_id, msg + offset, 1);
-		++offset;
-		nas->elements_len +=1;
+		memcpy(&element_id, msg, 1);
+		msg++;
+		nas->elements_len += 1;
 
 		nas->elements = calloc(sizeof(nas_pdu_elements), 2);
 		//if(NULL == nas.elements)...
 
-		memcpy(&(nas->elements[0].apn.len), msg + (offset++), 1);
-		memcpy(nas->elements[0].apn.val, msg + offset, nas->elements[0].apn.len);
+		memcpy(&(nas->elements[0].apn.len), msg, 1);
+		msg++;
+		memcpy(nas->elements[0].apn.val, msg, nas->elements[0].apn.len);
 		log_msg(LOG_INFO, "APN name - %s\n", nas->elements[0].apn.val);
 		break;
 		}
@@ -212,7 +255,7 @@ typedef struct nas_pdu_header1 {
 		nas->elements_len = 1;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 5);
 		//if(NULL == nas.elements)...
-		memcpy(&(nas->elements[0].auth_resp), msg + 3, sizeof(struct XRES));
+		memcpy(&(nas->elements[0].auth_resp), msg, sizeof(struct XRES));
 
 		break;
 
@@ -239,7 +282,7 @@ typedef struct nas_pdu_header1 {
                 */
 
                 char *buffer=NULL;
-		log_msg(LOG_INFO, "IMSI=%s\n", msg_to_hex_str(nas->elements[0].IMSI, BINARY_IMSI_LEN, &buffer));
+		log_msg(LOG_INFO, "IMSI=%s\n", msg_to_hex_str((char *)nas->elements[0].IMSI, BINARY_IMSI_LEN, &buffer));
                 free(buffer);
 
 		/*UE network capacity*/
