@@ -155,7 +155,6 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
         unsigned char security_header_type:4;
         unsigned char proto_discriminator:4;
         unsigned char message_type;
-        unsigned char nas_security_param;
      } nas_pdu_header_short;
 
      typedef struct nas_pdu_header_long {
@@ -163,7 +162,6 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
         unsigned char proto_discriminator:4;
         unsigned char procedure_trans_identity;
         unsigned char message_type;
-        unsigned char nas_security_param;
      } nas_pdu_header_long;
 
 
@@ -196,33 +194,35 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		        sec_header_type = msg[0] >> 4;
 		        protocol_discr = msg[0] & 0x0F;
 		        unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
-		log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
-		log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
-		log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
+		        log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
+		        log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
+		        log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
 			if (is_ESM) {
 				log_msg(LOG_INFO, "NAS PDU is ESM\n");
 				memcpy(&nas_header_long, msg, sizeof(nas_header_long)); /*copy only till msg type*/
-				msg += 4;
+				msg += 3;
 
 				nas->header.security_header_type = nas_header_long.security_header_type;
 				nas->header.proto_discriminator = nas_header_long.proto_discriminator;
 				nas->header.procedure_trans_identity = nas_header_long.procedure_trans_identity;
 				nas->header.message_type = nas_header_long.message_type;
-				nas->header.nas_security_param = nas_header_long.nas_security_param;
 			} else {
 				log_msg(LOG_INFO, "NAS PDU is EMM\n");
 				memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
-				msg += 3;
+				msg += 2;
 
 				nas->header.security_header_type = nas_header_short.security_header_type;
 				nas->header.proto_discriminator = nas_header_short.proto_discriminator;
 				nas->header.message_type = nas_header_short.message_type;
-				nas->header.nas_security_param = nas_header_short.nas_security_param;
 			}
                 } else {
 			log_msg(LOG_INFO, "No security header\n");
-			memcpy(&(nas->header), msg, sizeof(nas_pdu_header)); /*copy only till msg type*/
-                        msg += 3;
+			memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
+			msg += 2;
+
+			nas->header.security_header_type = nas_header_short.security_header_type;
+			nas->header.proto_discriminator = nas_header_short.proto_discriminator;
+			nas->header.message_type = nas_header_short.message_type;
                 }
 
 
@@ -255,13 +255,18 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		nas->elements_len = 1;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 5);
 		//if(NULL == nas.elements)...
+		unsigned short len = get_length(&msg);
 		memcpy(&(nas->elements[0].auth_resp), msg, sizeof(struct XRES));
-
 		break;
 
 	case NAS_ATTACH_REQUEST:{
                 //msg += offset;
 		//short offset = 0;
+		unsigned char tmp = msg[0];
+		nas->header.security_encryption_algo = (tmp & 0xF0) >> 4;
+		nas->header.security_integrity_algo = tmp & 0x0F;
+		msg++;
+
 		nas->elements_len = 6;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 6);
 		//if(NULL == nas.elements)...
@@ -292,9 +297,14 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		msg += nas->elements[1].ue_network.len;
 
 		/*ESM msg container*/
-		len = get_length(&msg);
+		len = msg[0] << 8 | msg[1];
+                msg += 2;
+		log_msg(LOG_INFO, "len=%x\n", len);
+		log_msg(LOG_INFO, "msg[0]=%x\n", msg[0]);
 		nas->elements[5].pti = msg[1];
 		unsigned char val = msg[4];
+		log_msg(LOG_INFO, "pti=%x\n", nas->elements[5].pti);
+		log_msg(LOG_INFO, "val=%x\n", val);
 		/*ESM message header len is 4: bearer_id_flags(1)+proc_tx_id(1)+msg_id(1)
 		 * +pdn_type(1)*/
 		/*element id 13(1101....) = "esm required" flag*/
@@ -317,6 +327,10 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		msg++;
 		memcpy((nas->elements[4].ms_network.capab), msg,
 			nas->elements[4].ms_network.len);
+		log_msg(LOG_INFO, "element_id=%x\n", nas->elements[4].ms_network.element_id);
+		log_msg(LOG_INFO, "len=%x\n", nas->elements[4].ms_network.len);
+		log_msg(LOG_INFO, "network.capab=%s\n", msg_to_hex_str(nas->elements[4].ms_network.capab, nas->elements[4].ms_network.len, &buffer));
+                free(buffer);
 
 		break;
 		}
