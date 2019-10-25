@@ -76,101 +76,33 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
         free(buffer);
         log_msg(LOG_INFO, "NAS PDU proc code: %u\n", proc_code);
 
-	unsigned char offset = 0;
+	//unsigned char offset = 0;
 
-#if 0
-	if(S1AP_UL_NAS_TX_MSG_CODE == proc_code) {
-		/*check whether there is security header*/
-		unsigned char header_type;
-		memcpy(&header_type, msg+1, 1);
-		header_type >>= 4;
-		if(0 == header_type) { /*not security header*/
-			log_msg(LOG_INFO, "No security header\n");
-			memcpy(&(nas->header), msg+1, 2);/*copy only till msg type*/
-		} else {
-			log_msg(LOG_INFO, "Security header\n");
-			/*now for esm resp, there is procedure tx identity, why the hell it was not there before.*/
-			/*one more donkey logic, do something!!*/
-			if(4 == header_type || ((7 == (*(msg+7) & 7)))) {
-				memcpy(&(nas->header), msg+7, 2);/*copy only till msg type*/
-				offset = 9;
-			} else {
-				unsigned char tmp;
-				memcpy(&(nas->header.message_type), msg+9, 1);/*copy only till msg type*/
-				memcpy(&(tmp), msg+7, 1);/*copy only till msg type*/
-				nas->header.security_header_type = tmp;
-				offset = 10;
-			}
-		}
-	} else {
-		memcpy(&(nas->header), msg+2, sizeof(nas_pdu_header));
-	}
-#endif
+	nas_pdu_header_sec nas_header_sec;
+	nas_pdu_header_short nas_header_short;
+	nas_pdu_header_long nas_header_long;
 
-#if 0
-	if(S1AP_UL_NAS_TX_MSG_CODE == proc_code) {
-		/*check whether there is security header*/
-		unsigned char header_type = 0;
+	unsigned char sec_header_type;
+	unsigned char protocol_discr;
 
-		memcpy(&header_type, msg+1, 1);
-		header_type >>= 4;
-		if(0 == header_type) { /*not security header*/
-			log_msg(LOG_INFO, "No security header\n");
-			memcpy(&(nas->header), msg+1, 2);/*copy only till msg type*/
-		} else {
-			log_msg(LOG_INFO, "Security header\n");
-			/*now for esm resp, there is procedure tx identity, why the hell it was not there before.*/
-			/*one more donkey logic, do something!!*/
-			if(4 == header_type || ((7 == (*(msg+7) & 7)))) {
-				log_msg(LOG_INFO, "header == 4 || 7\n");
-				if(header_type == 4 || header_type == 2) {
-				log_msg(LOG_INFO, "security - cihpered\n");
-				 memcpy(&(nas->header), msg+7, 2);/*copy only till msg type*/
-				 offset = 9;
-				}
-				else {
-				log_msg(LOG_INFO, "security - noned\n");
-				memcpy(&(nas->header), msg+1, 2);/*copy only till msg type*/
-				offset = 3;
-				}
-			} else {
-				unsigned char tmp;
-				memcpy(&(nas->header.message_type), msg+9, 1);/*copy only till msg type*/
-				memcpy(&(tmp), msg+7, 1);/*copy only till msg type*/
-				nas->header.security_header_type = tmp;
-				offset = 10;
-			}
-		}
-	} else if (S1AP_INITIAL_UE_MSG_CODE == proc_code ) {
-#endif
+	sec_header_type = msg[0] >> 4;
+	protocol_discr = msg[0] & 0x0F;
+	unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
+	log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
+	log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
+	log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
 
-     typedef struct nas_pdu_header_sec {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char mac[MAC_SIZE];
-        unsigned char seq_no;
-     } nas_pdu_header_sec;
+	if(0 != sec_header_type) { /*security header*/
+		log_msg(LOG_INFO, "Security header\n");
 
-     typedef struct nas_pdu_header_short {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char message_type;
-     } nas_pdu_header_short;
+		memcpy(&nas_header_sec, msg, sizeof(nas_pdu_header_sec));
 
-     typedef struct nas_pdu_header_long {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char procedure_trans_identity;
-        unsigned char message_type;
-     } nas_pdu_header_long;
+                char *buffer;
+		log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str((char *)nas_header_sec.mac, MAC_SIZE, &buffer));
+                free(buffer);
 
-
-                nas_pdu_header_sec nas_header_sec;
-                nas_pdu_header_short nas_header_short;
-                nas_pdu_header_long nas_header_long;
-
-		unsigned char sec_header_type;
-		unsigned char protocol_discr;
+		log_msg(LOG_INFO, "seq no=%x\n", nas_header_sec.seq_no);
+                msg += 6;
 
 		sec_header_type = msg[0] >> 4;
 		protocol_discr = msg[0] & 0x0F;
@@ -178,52 +110,33 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
 		log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
 		log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
+		if (is_ESM) {
+			log_msg(LOG_INFO, "NAS PDU is ESM\n");
+			memcpy(&nas_header_long, msg, sizeof(nas_header_long)); /*copy only till msg type*/
+			msg += 3;
 
-		if(0 != sec_header_type) { /*security header*/
-			log_msg(LOG_INFO, "Security header\n");
-
-			memcpy(&nas_header_sec, msg, sizeof(nas_pdu_header_sec));
-
-                        char *buffer;
-			log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str((char *)nas_header_sec.mac, MAC_SIZE, &buffer));
-                        free(buffer);
-
-			log_msg(LOG_INFO, "seq no=%x\n", nas_header_sec.seq_no);
-                        msg += 6;
-
-		        sec_header_type = msg[0] >> 4;
-		        protocol_discr = msg[0] & 0x0F;
-		        unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
-		        log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
-		        log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
-		        log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
-			if (is_ESM) {
-				log_msg(LOG_INFO, "NAS PDU is ESM\n");
-				memcpy(&nas_header_long, msg, sizeof(nas_header_long)); /*copy only till msg type*/
-				msg += 3;
-
-				nas->header.security_header_type = nas_header_long.security_header_type;
-				nas->header.proto_discriminator = nas_header_long.proto_discriminator;
-				nas->header.procedure_trans_identity = nas_header_long.procedure_trans_identity;
-				nas->header.message_type = nas_header_long.message_type;
-			} else {
-				log_msg(LOG_INFO, "NAS PDU is EMM\n");
-				memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
-				msg += 2;
-
-				nas->header.security_header_type = nas_header_short.security_header_type;
-				nas->header.proto_discriminator = nas_header_short.proto_discriminator;
-				nas->header.message_type = nas_header_short.message_type;
-			}
-                } else {
-			log_msg(LOG_INFO, "No security header\n");
+			nas->header.security_header_type = nas_header_long.security_header_type;
+			nas->header.proto_discriminator = nas_header_long.proto_discriminator;
+			nas->header.procedure_trans_identity = nas_header_long.procedure_trans_identity;
+			nas->header.message_type = nas_header_long.message_type;
+		} else {
+			log_msg(LOG_INFO, "NAS PDU is EMM\n");
 			memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
 			msg += 2;
 
 			nas->header.security_header_type = nas_header_short.security_header_type;
 			nas->header.proto_discriminator = nas_header_short.proto_discriminator;
 			nas->header.message_type = nas_header_short.message_type;
-                }
+		}
+        } else {
+		log_msg(LOG_INFO, "No security header\n");
+		memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
+		msg += 2;
+
+		nas->header.security_header_type = nas_header_short.security_header_type;
+		nas->header.proto_discriminator = nas_header_short.proto_discriminator;
+		nas->header.message_type = nas_header_short.message_type;
+        }
 
 
 	log_msg(LOG_INFO, "Nas msg type: %X\n", nas->header.message_type);
@@ -256,7 +169,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		nas->elements_len = 1;
 		nas->elements = calloc(sizeof(nas_pdu_elements), 5);
 		//if(NULL == nas.elements)...
-		unsigned short len = get_length(&msg);
+		//unsigned short len = get_length(&msg);
 		memcpy(&(nas->elements[0].auth_resp), msg, sizeof(struct XRES));
 		break;
 
@@ -331,7 +244,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 			nas->elements[4].ms_network.len);
 		log_msg(LOG_INFO, "element_id=%x\n", nas->elements[4].ms_network.element_id);
 		log_msg(LOG_INFO, "len=%x\n", nas->elements[4].ms_network.len);
-		log_msg(LOG_INFO, "network.capab=%s\n", msg_to_hex_str(nas->elements[4].ms_network.capab, nas->elements[4].ms_network.len, &buffer));
+		log_msg(LOG_INFO, "network.capab=%s\n", msg_to_hex_str((const char *)nas->elements[4].ms_network.capab, nas->elements[4].ms_network.len, &buffer));
                 free(buffer);
 
 		break;
