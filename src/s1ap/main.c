@@ -93,11 +93,9 @@ char *msg_to_hex_str(const char *msg, int len, char **buffer) {
       local[2 * i] = chars[(msg[i] >> 4) & 0x0F];
       local[2 * i + 1] = chars[(msg[i]) & 0x0F];
   }
-
   local[2 * len] = '\0';
 
   return local;
-
 }
 
 unsigned short get_length(char **msg) {

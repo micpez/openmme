@@ -140,12 +140,11 @@ s1_setup_handler(char *msg, int enb_fd)
 	int resp_len = 0;
 	struct proto_IE s1_init_ies;
 
-        unsigned short msg_len = 0;
-        msg_len = get_length(&msg);
+	unsigned short msg_len = get_length(&msg);
 
-        char *buffer;
-        log_msg(LOG_INFO, "s1 setup handler msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
-        free(buffer);
+	char *buffer;
+	log_msg(LOG_INFO, "s1 setup handler msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+	free(buffer);
 
 	/*****Message structure***
 	*/

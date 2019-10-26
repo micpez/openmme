@@ -78,11 +78,13 @@ buffer_copy(struct Buffer *buffer, void *value, size_t size);
  * @param[in] len - Length of the bytes array from which to extract the int
  * @return Integer value extracted out of bytes array. 0 if failed.
  */
+int
+decode_int_val(unsigned char *bytes, short len);
 
-int decode_int_val(unsigned char *bytes, short len);
+char*
+msg_to_hex_str(const char *msg, int len, char **buffer);
 
-char *msg_to_hex_str(const char *msg, int len, char **buffer);
-
-unsigned short get_length(char **msg);
+unsigned short
+get_length(char **msg);
 
 #endif /*__S1AP_H_*/

@@ -104,7 +104,7 @@ int send_sctp_msg(int connSock, unsigned char *buffer, size_t len, uint16_t stre
 {
 	uint32_t ppid = S1AP_PPID;
 	return sctp_sendmsg(connSock, (void *)buffer, len,
-			             NULL, 0, htonl(ppid), 0, stream_no, 0, 0);
+			NULL, 0, htonl(ppid), 0, stream_no, 0, 0);
 }
 
 int close_sctp_socket(int connSock)

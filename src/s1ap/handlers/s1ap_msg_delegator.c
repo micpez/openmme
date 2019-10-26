@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -68,13 +69,13 @@ void
 parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		unsigned short proc_code)
 {
+	log_msg(LOG_INFO, "NAS PDU proc code: %u\n", proc_code);
 
-        unsigned short msg_len = get_length(&msg);
+	unsigned short msg_len = get_length(&msg);
 
-        char *buffer;
-        log_msg(LOG_INFO, "NAS PDU msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
-        free(buffer);
-        log_msg(LOG_INFO, "NAS PDU proc code: %u\n", proc_code);
+	char *buffer;
+	log_msg(LOG_INFO, "NAS PDU msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+	free(buffer);
 
 	unsigned char offset = 0;
 
@@ -105,9 +106,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 	} else {
 		memcpy(&(nas->header), msg+2, sizeof(nas_pdu_header));
 	}
-#endif
 
-#if 0
 	if(S1AP_UL_NAS_TX_MSG_CODE == proc_code) {
 		/*check whether there is security header*/
 		unsigned char header_type = 0;
@@ -144,30 +143,9 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 	} else if (S1AP_INITIAL_UE_MSG_CODE == proc_code ) {
 #endif
 
-     typedef struct nas_pdu_header_sec {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char mac[MAC_SIZE];
-        unsigned char seq_no;
-     } nas_pdu_header_sec;
-
-     typedef struct nas_pdu_header_short {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char message_type;
-     } nas_pdu_header_short;
-
-     typedef struct nas_pdu_header_long {
-        unsigned char security_header_type:4;
-        unsigned char proto_discriminator:4;
-        unsigned char procedure_trans_identity;
-        unsigned char message_type;
-     } nas_pdu_header_long;
-
-
-                nas_pdu_header_sec nas_header_sec;
-                nas_pdu_header_short nas_header_short;
-                nas_pdu_header_long nas_header_long;
+		nas_pdu_header_sec nas_header_sec;
+		nas_pdu_header_short nas_header_short;
+		nas_pdu_header_long nas_header_long;
 
 		unsigned char sec_header_type;
 		unsigned char protocol_discr;
@@ -184,19 +162,19 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 
 			memcpy(&nas_header_sec, msg, sizeof(nas_pdu_header_sec));
 
-                        char *buffer;
+			char *buffer;
 			log_msg(LOG_INFO, "mac=%s\n", msg_to_hex_str((char *)nas_header_sec.mac, MAC_SIZE, &buffer));
-                        free(buffer);
+			free(buffer);
 
 			log_msg(LOG_INFO, "seq no=%x\n", nas_header_sec.seq_no);
-                        msg += 6;
+			msg += 6;
 
-		        sec_header_type = msg[0] >> 4;
-		        protocol_discr = msg[0] & 0x0F;
-		        unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
-		        log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
-		        log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
-		        log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
+			sec_header_type = msg[0] >> 4;
+			protocol_discr = msg[0] & 0x0F;
+			unsigned char is_ESM = ((unsigned short)protocol_discr == 0x02);  // see TS 24.007
+			log_msg(LOG_INFO, "Security header=%d\n", sec_header_type);
+			log_msg(LOG_INFO, "Protocol discriminator=%d\n", protocol_discr);
+			log_msg(LOG_INFO, "is_ESM=%d\n", is_ESM);
 			if (is_ESM) {
 				log_msg(LOG_INFO, "NAS PDU is ESM\n");
 				memcpy(&nas_header_long, msg, sizeof(nas_header_long)); /*copy only till msg type*/
@@ -215,7 +193,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 				nas->header.proto_discriminator = nas_header_short.proto_discriminator;
 				nas->header.message_type = nas_header_short.message_type;
 			}
-                } else {
+		} else {
 			log_msg(LOG_INFO, "No security header\n");
 			memcpy(&nas_header_short, msg, sizeof(nas_header_short)); /*copy only till msg type*/
 			msg += 2;
@@ -223,7 +201,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 			nas->header.security_header_type = nas_header_short.security_header_type;
 			nas->header.proto_discriminator = nas_header_short.proto_discriminator;
 			nas->header.message_type = nas_header_short.message_type;
-                }
+		}
 
 
 	log_msg(LOG_INFO, "Nas msg type: %X\n", nas->header.message_type);
@@ -235,7 +213,7 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		log_msg(LOG_INFO, "ESM response recvd\n");
 		memcpy(&element_id, msg, 1);
 		msg++;
-		nas->elements_len += 1;
+		nas->elements_len +=1;
 
 		nas->elements = calloc(sizeof(nas_pdu_elements), 2);
 		//if(NULL == nas.elements)...
@@ -258,11 +236,12 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		//if(NULL == nas.elements)...
 		unsigned short len = get_length(&msg);
 		memcpy(&(nas->elements[0].auth_resp), msg, sizeof(struct XRES));
+
 		break;
 
 	case NAS_ATTACH_REQUEST:{
 		log_msg(LOG_INFO, "NAS_ATTACH_REQUEST recvd\n");
-                //msg += offset;
+		//msg += offset;
 		//short offset = 0;
 		unsigned char tmp = msg[0];
 		nas->header.security_encryption_algo = (tmp & 0xF0) >> 4;
@@ -283,24 +262,24 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		msg += BINARY_IMSI_LEN;
 
 		/*Code working with sprirent and Polaris*/
-                /*
+		/*
 		memcpy(&(nas->elements[0].IMSI), msg+5, BINARY_IMSI_LEN);
 		offset = 5 + BINARY_IMSI_LEN ;
-                */
+		*/
 
-                char *buffer=NULL;
+		char *buffer;
 		log_msg(LOG_INFO, "IMSI=%s\n", msg_to_hex_str((char *)nas->elements[0].IMSI, BINARY_IMSI_LEN, &buffer));
-                free(buffer);
+		free(buffer);
 
 		/*UE network capacity*/
 		nas->elements[1].ue_network.len = msg[0];
-                msg++;
+		msg++;
 		memcpy((nas->elements[1].ue_network.capab), msg, nas->elements[1].ue_network.len);
 		msg += nas->elements[1].ue_network.len;
 
 		/*ESM msg container*/
 		len = msg[0] << 8 | msg[1];
-                msg += 2;
+		msg += 2;
 		log_msg(LOG_INFO, "len=%x\n", len);
 		log_msg(LOG_INFO, "msg[0]=%x\n", msg[0]);
 		nas->elements[5].pti = msg[1];
@@ -327,12 +306,12 @@ parse_nas_pdu(char *msg,  int nas_msg_len, struct nasPDU *nas,
 		msg++;
 		nas->elements[4].ms_network.len = msg[0];
 		msg++;
-		memcpy((nas->elements[4].ms_network.capab), msg,
+		memcpy(nas->elements[4].ms_network.capab, msg,
 			nas->elements[4].ms_network.len);
 		log_msg(LOG_INFO, "element_id=%x\n", nas->elements[4].ms_network.element_id);
 		log_msg(LOG_INFO, "len=%x\n", nas->elements[4].ms_network.len);
 		log_msg(LOG_INFO, "network.capab=%s\n", msg_to_hex_str(nas->elements[4].ms_network.capab, nas->elements[4].ms_network.len, &buffer));
-                free(buffer);
+		free(buffer);
 
 		break;
 		}
@@ -397,13 +376,12 @@ parse_IEs(char *msg, struct proto_IE *proto_ies, unsigned short proc_code)
 		msg +=1;//next to criticality
 
 		IE_data_len = get_length(&msg);
+		log_msg(LOG_INFO, "[%d] IE type = %d\n", i, IE_type);
+		log_msg(LOG_INFO, "[%d] IE data len= %x - %u\n", i, IE_data_len, IE_data_len);
 
-                log_msg(LOG_INFO, "[%d] IE type = %d\n", i, IE_type);
-                log_msg(LOG_INFO, "[%d] IE data len= %x - %u\n", i, IE_data_len, IE_data_len);
-
-                char *buffer;
-                log_msg(LOG_INFO, "[%d] IE value= %s\n", i, msg_to_hex_str(msg, IE_data_len, &buffer));
-                free(buffer);
+		char *buffer;
+		log_msg(LOG_INFO, "[%d] IE value= %s\n", i, msg_to_hex_str(msg, IE_data_len, &buffer));
+		free(buffer);
 
 		/*Based on IE_Type call the parser to read IE info*/
 		/*TODO: optimize with function ptr etc.*/
@@ -415,7 +393,7 @@ parse_IEs(char *msg, struct proto_IE *proto_ies, unsigned short proc_code)
 
 		case S1AP_IE_ENB_NAME:
 			log_msg(LOG_INFO, "parse global eNB name\n");
-                        ie_parse_enb_name(msg, IE_data_len);
+			ie_parse_enb_name(msg, IE_data_len);
 			break;
 
 		case S1AP_IE_SUPPORTED_TAS:
@@ -498,20 +476,19 @@ init_ue_msg_handler(char *msg, int enb_fd)
 	*/
 	log_msg(LOG_INFO, "--------------------- %d --------------\n", msg[3]);
 
-        unsigned short msg_len = 0;
-        msg_len = get_length(&msg);
+	unsigned short msg_len = get_length(&msg);
 
-        char *buffer;
-        log_msg(LOG_INFO, "initial UE msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
-        free(buffer);
+	char *buffer;
+	log_msg(LOG_INFO, "initial UE msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+	free(buffer);
 
 	parse_IEs(msg, &proto_ies, S1AP_INITIAL_UE_MSG_CODE);
-        /*
+	/*
 	if (msg[3] == 0x80)
 		parse_IEs(msg+3, &proto_ies, S1AP_INITIAL_UE_MSG_CODE);
 	else
 		parse_IEs(msg+2, &proto_ies, S1AP_INITIAL_UE_MSG_CODE);
-        */
+	*/
 
 	/*Check nas message type*/
 	//TODO: check through all proto IEs for which is nas
@@ -538,12 +515,11 @@ UL_NAS_msg_handler(char *msg, int enb_fd)
 	//TODO: use static instead of synamic for perf.
 	struct proto_IE proto_ies;
 
-        unsigned short msg_len = 0;
-        msg_len = get_length(&msg);
+	unsigned short msg_len = get_length(&msg);
 
-        char *buffer;
-        log_msg(LOG_INFO, "UL_NAS msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
-        free(buffer);
+	char *buffer;
+	log_msg(LOG_INFO, "UL_NAS msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+	free(buffer);
 
 	/*****Message structure***
 	*/
@@ -600,7 +576,7 @@ handle_s1ap_message(void *msg)
 	header->procedure_code = ntohs(header->procedure_code);
 	header->criticality= ntohs(header->criticality);
 	log_msg(LOG_INFO, "proc code %d\n", header->procedure_code & 0x00FF);
-        message += 3;
+	message += 3;
 
 	switch(header->procedure_code & 0x00FF){
 	case S1AP_SETUP_REQUEST_CODE:

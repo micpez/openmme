@@ -41,12 +41,11 @@ s1_init_ctx_resp_handler(char *msg)
 	struct proto_IE s1_ics_ies;
 	struct initctx_resp_Q_msg ics_resp;
 
-        unsigned short msg_len = 0;
-        msg_len = get_length(&msg);
+	unsigned short msg_len = get_length(&msg);
 
-        char *buffer;
-        log_msg(LOG_INFO, "s1_init_ctx_resp_handler msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
-        free(buffer);
+	char *buffer;
+	log_msg(LOG_INFO, "s1_init_ctx_resp_handler msg: %s\n", msg_to_hex_str(msg, msg_len, &buffer));
+	free(buffer);
 
 	/*****Message structure****/
 	log_msg(LOG_INFO, "Parse int ctx s1ap response message:--\n");
